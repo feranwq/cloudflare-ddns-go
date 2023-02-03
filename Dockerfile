@@ -9,7 +9,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o app cloudflare-ddns.go
+RUN GO_ENABLED=0 go build -o app cloudflare-ddns.go
 
 FROM alpine:3.16
 

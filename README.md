@@ -80,36 +80,6 @@ You can handle ddns for multiple domains (cloudflare zones) using the same docke
 
 Do not include the base domain name in your `subdomains` config. Do not use the [FQDN](https://en.wikipedia.org/wiki/Fully_qualified_domain_name).
 
-```bash
-{
-  "cloudflare": [
-    {
-      "authentication": {
-        "api_token": "api_token_here",
-        "api_key": {
-          "api_key": "api_key_here",
-          "account_email": "your_email_here"
-        }
-      },
-      "zone_id": "your_zone_id_here",
-      "subdomains": [
-        {
-          "name": "",
-          "proxied": false
-        },
-        {
-          "name": "remove_or_replace_with_your_subdomain",
-          "proxied": false
-        }
-      ]
-    }
-  ],
-  "a": true,
-  "aaaa": true,
-  "purgeUnknownRecords": false
-}
-```
-
 ## 🐳 Deploy with Docker Compose
 
 Pre-compiled images are available via [the official docker container on DockerHub](https://hub.docker.com/r/wqferan/cloudflare-ddns).
