@@ -1,4 +1,5 @@
 FROM golang:1.19-alpine AS build_base
+RUN apk add build-base
 
 WORKDIR /tmp/build
 
@@ -9,7 +10,7 @@ RUN go mod download
 
 COPY . .
 
-RUN GO_ENABLED=0 go build -o app cloudflare-ddns.go
+RUN go build -o app cloudflare-ddns.go
 
 FROM alpine:3.16
 
