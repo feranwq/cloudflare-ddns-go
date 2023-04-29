@@ -72,8 +72,8 @@ type RecordResult struct {
 func GetIP() (ips []IP) {
 	ipv4Enabled := cfg.MustGet(ctx, "a")
 	ipv6Enabled := cfg.MustGet(ctx, "aaaa")
-	ipv4Url := "http://4.ipw.cn" // "https://1.1.1.1/cdn-cgi/trace"
-	ipv6Url := "http://6.ipw.cn" // "https://[2606:4700:4700::1111]/cdn-cgi/trace"
+	ipv4Url := "https://4.ipw.cn" // "https://1.1.1.1/cdn-cgi/trace"
+	ipv6Url := "https://6.ipw.cn" // "https://[2606:4700:4700::1111]/cdn-cgi/trace"
 	if ipv4Enabled.Bool() {
 		ip, err := getIP(ipv4Url)
 		ip.IPType = "A"
