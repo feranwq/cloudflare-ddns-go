@@ -70,8 +70,8 @@ type RecordResult struct {
 }
 
 func GetIP() (ips []IP) {
-	ipv4Enabled := cfg.MustGet(ctx, "a")
-	ipv6Enabled := cfg.MustGet(ctx, "aaaa")
+	ipv4Enabled := cfg.MustGetWithEnv(ctx, "a")
+	ipv6Enabled := cfg.MustGetWithEnv(ctx, "aaaa")
 	ipv4Url := "https://4.ipw.cn" // "https://1.1.1.1/cdn-cgi/trace"
 	ipv6Url := "https://6.ipw.cn" // "https://[2606:4700:4700::1111]/cdn-cgi/trace"
 	if ipv4Enabled.Bool() {
@@ -110,7 +110,7 @@ func getIP(url string) (ip IP, err error) {
 func CommitRecord(ip IP) {
 	url := "https://api.cloudflare.com/client/v4/"
 	cloudflareCfgs := &CloudflareCfgs{}
-	if err := cfg.MustGet(ctx, "cloudflare").Struct(cloudflareCfgs); err != nil {
+	if err := cfg.MustGetWithEnv(ctx, "cloudflare").Struct(cloudflareCfgs); err != nil {
 		fmt.Printf("😡 cloudflare config load failed, error msg: %s\n", err)
 		return
 	}
@@ -154,7 +154,7 @@ func CommitRecord(ip IP) {
 				Name:    fqdn,
 				Content: ip.IPAddress,
 				Proxied: subDomain.Proxied,
-				TTL:     cfg.MustGet(ctx, "ttl").Int(),
+				TTL:     cfg.MustGetWithEnv(ctx, "ttl").Int(),
 			}
 			recordJson, _ := json.Marshal(record)
 			for _, domain := range recordResp.Result {
@@ -191,8 +191,8 @@ func CommitRecord(ip IP) {
 func main() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	client.SetTimeout(cfg.MustGet(ctx, "timeout").Duration())
-	fmt.Printf("🕰️ Updating records every %s...\n", cfg.MustGet(ctx, "repeat").String())
+	client.SetTimeout(cfg.MustGetWithEnv(ctx, "timeout").Duration())
+	fmt.Printf("🕰️ Updating records every %s...\n", cfg.MustGetWithEnv(ctx, "repeat").String())
 	ips := GetIP()
 	for _, ip := range ips {
 		CommitRecord(ip)
@@ -202,7 +202,7 @@ func main() {
 		case <-c:
 			fmt.Println("🛑 Stopping main thread...")
 			return
-		case <-time.After(time.Duration(cfg.MustGet(ctx, "repeat").Duration())):
+		case <-time.After(time.Duration(cfg.MustGetWithEnv(ctx, "repeat").Duration())):
 			ips := GetIP()
 			for _, ip := range ips {
 				CommitRecord(ip)
