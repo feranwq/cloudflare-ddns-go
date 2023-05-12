@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"syscall"
 	"time"
@@ -69,30 +70,20 @@ type RecordResult struct {
 	Content string `json:"content"`
 }
 
-func GetIP() (ips []IP) {
-	ipv4Enabled := cfg.MustGetWithEnv(ctx, "a")
-	ipv6Enabled := cfg.MustGetWithEnv(ctx, "aaaa")
-	ipv4Url := "https://4.ipw.cn" // "https://1.1.1.1/cdn-cgi/trace"
-	ipv6Url := "https://6.ipw.cn" // "https://[2606:4700:4700::1111]/cdn-cgi/trace"
-	if ipv4Enabled.Bool() {
-		ip, err := getIP(ipv4Url)
-		ip.IPType = "A"
+func GetIP(url, testIP, ipType string, warp bool, ) (ip IP, err error) {
+	ip.IPType = ipType
+	if warp {
+		ip, err = getLocalIP(testIP)
 		if err != nil {
-			fmt.Println("Failed to get ipv4 address")
-		} else {
-			fmt.Printf("🧩 IPv4 %s detected\n", ip.IPAddress)
+			fmt.Println("Failed to get address")
+			return
 		}
-		ips = append(ips, ip)
+		return
 	}
-	if ipv6Enabled.Bool() {
-		ip, err := getIP(ipv6Url)
-		ip.IPType = "AAAA"
-		if err != nil {
-			fmt.Println("Failed to get ipv6 address")
-		} else {
-			fmt.Printf("🧩 IPv6 %s detected\n", ip.IPAddress)
-		}
-		ips = append(ips, ip)
+	ip, err = getIP(url)
+	if err != nil {
+		fmt.Println("Failed to get address")
+		return
 	}
 	return
 }
@@ -100,12 +91,27 @@ func GetIP() (ips []IP) {
 func getIP(url string) (ip IP, err error) {
 	r, err := client.Get(ctx, url)
 	if err != nil {
-		return ip, err
+		return
 	}
 	defer r.Close()
 	ip.IPAddress = r.ReadAllString()
+	fmt.Printf("🧩 IP %s detected\n", ip.IPAddress)
 	return ip, nil
 }
+
+func getLocalIP(testIP string) (ip IP, err error) {
+	// testIP := "2606:4700:4700::1001"
+
+	cmd := exec.Command("sh", "-c", fmt.Sprintf(`ip route get %s 2>/dev/null | grep -oP 'src \K\S+'`, testIP))
+	output, err := cmd.Output()
+	if err != nil {
+		return
+	}
+	ip.IPAddress = string(output)
+	fmt.Printf("🧩 LocalIP %s detected\n", ip.IPAddress)
+	return ip, nil
+}
+
 
 func CommitRecord(ip IP) {
 	url := "https://api.cloudflare.com/client/v4/"
@@ -193,7 +199,21 @@ func main() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	client.SetTimeout(cfg.MustGetWithEnv(ctx, "timeout").Duration())
 	fmt.Printf("🕰️ Updating records every %s...\n", cfg.MustGetWithEnv(ctx, "repeat").String())
-	ips := GetIP()
+	ipv4Enabled := cfg.MustGetWithEnv(ctx, "a")
+	ipv6Enabled := cfg.MustGetWithEnv(ctx, "aaaa")
+	ipv4Url := "https://4.ipw.cn" // "https://1.1.1.1/cdn-cgi/trace"
+	ipv6Url := "https://6.ipw.cn" // "https://[2606:4700:4700::1111]/cdn-cgi/trace"
+	ipv4TestIP := "1.1.1.1"
+	ipv6TestIP := "2606:4700:4700::1111"
+	var ips []IP
+	if ipv4Enabled.Bool() {
+		ip, _ := GetIP(ipv4Url, ipv4TestIP, "A", false)
+		ips = append(ips, ip)
+	}
+	if ipv6Enabled.Bool() {
+		ip, _ := GetIP(ipv6Url, ipv6TestIP, "AAAA", true)
+		ips = append(ips, ip)
+	}
 	for _, ip := range ips {
 		CommitRecord(ip)
 	}
@@ -203,7 +223,15 @@ func main() {
 			fmt.Println("🛑 Stopping main thread...")
 			return
 		case <-time.After(time.Duration(cfg.MustGetWithEnv(ctx, "repeat").Duration())):
-			ips := GetIP()
+			ips = []IP{}
+			if ipv4Enabled.Bool() {
+				ip, _ := GetIP(ipv4Url, ipv4TestIP, "A", false)
+				ips = append(ips, ip)
+			}
+			if ipv6Enabled.Bool() {
+				ip, _ := GetIP(ipv6Url, ipv6TestIP, "AAAA", true)
+				ips = append(ips, ip)
+			}
 			for _, ip := range ips {
 				CommitRecord(ip)
 			}
